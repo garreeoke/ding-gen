@@ -1,0 +1,1 @@
+{"name":"{{ var "paramName" }}","default":"{{ var "paramDefault" ?: "None" }}","description":"{{ var "paramDescription" }}","hasOptions":"{{ var "paramHasOptions" }}","label":"{{ var "paramLabel" }}","pinned":"{{ var "paramPinned" }}","Required":"{{ var "Required" }}"}

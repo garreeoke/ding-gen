@@ -1,0 +1,273 @@
+{
+  "keepWaitingPipelines": false,
+  "lastModifiedBy": "aaron",
+  "limitConcurrent": false,
+  "parallel": false,
+  "parameterConfig": [
+    {
+      "default": "${trigger['tag']}",
+      "description": "PR number",
+      "hasOptions": false,
+      "label": "",
+      "name": "ticket",
+      "options": [],
+      "pinned": false,
+      "required": false
+    },
+    {
+      "default": "Dev",
+      "description": "What environment is this deploying to?",
+      "hasOptions": false,
+      "label": "",
+      "name": "environment_name",
+      "options": [],
+      "pinned": false,
+      "required": false
+    },
+    {
+      "default": "${trigger['tag']}",
+      "description": "None",
+      "hasOptions": false,
+      "label": "",
+      "name": "workspace",
+      "options": [],
+      "pinned": false,
+      "required": false
+    }
+  ],
+  "stages": [
+    {
+      "account": "gke-aaront-1",
+      "cloudProvider": "kubernetes",
+      "manifestArtifact": {
+        "artifactAccount": "garreeoke",
+        "name": "acmeair/acme-air-full.yml",
+        "reference": "https://api.github.com/repos/garreeoke/spin-apps/contents/acmeair/acme-air-full.yml",
+        "type": "github/file"
+      },
+      "moniker": {
+        "app": "acmeair"
+      },
+      "name": "DeployFullAcmeAir1",
+      "refId": "1",
+      "requisiteStageRefIds": [],
+      "skipExpressionEvaluation": false,
+      "source": "artifact",
+      "trafficManagement": {
+        "enabled": false,
+        "options": {
+          "enableTraffic": false,
+          "services": []
+        }
+      },
+      "type": "deployManifest"
+    },
+    {
+      "action": "plan",
+      "artifacts": [
+        {
+          "account": "garreeoke",
+          "artifact": {
+            "artifactAccount": "garreeoke",
+            "name": "main.tf",
+            "reference": "https://api.github.com/repos/garreeoke/armory-terraform/contents/main.tf",
+            "type": "github/file",
+            "version": "master"
+          }
+        }
+      ],
+      "completeOtherBranchesThenFail": false,
+      "continuePipeline": true,
+      "expectedArtifacts": [
+        {
+          "defaultArtifact": {
+            "customKind": true
+          },
+          "displayName": "planfile",
+          "id": "terraform-artifact-id",
+          "matchArtifact": {
+            "artifactAccount": "embedded-artifact",
+            "name": "planfile",
+            "type": "embedded/base64"
+          },
+          "useDefaultArtifact": false,
+          "usePriorArtifact": false
+        }
+      ],
+      "failPipeline": false,
+      "name": "TF-Plan-GCP-VM1",
+      "overrides": {
+        "environment_name": "${parameters.workspace}-$parameters.environment_name}"
+      },
+      "profile": "",
+      "refId": "2",
+      "requisiteStageRefIds": [
+        "1"
+      ],
+      "targets": [],
+      "terraformVersion": "0.12.20",
+      "type": "terraform",
+      "workspace": "${parameters.workspace}"
+    },
+    {
+      "action": "apply",
+      "artifacts": [
+        {
+          "account": "garreeoke",
+          "artifact": {
+            "artifactAccount": "garreeoke",
+            "name": "main.tf",
+            "reference": "https://api.github.com/repos/garreeoke/armory-terraform/contents/main.tf",
+            "type": "github/file",
+            "version": "master"
+          }
+        }
+      ],
+      "completeOtherBranchesThenFail": false,
+      "continuePipeline": true,
+      "expectedArtifacts": [
+        {
+          "defaultArtifact": {
+            "customKind": true
+          },
+          "displayName": "",
+          "id": "",
+          "matchArtifact": {
+            "artifactAccount": "",
+            "name": "",
+            "type": ""
+          },
+          "useDefaultArtifact": false,
+          "usePriorArtifact": false
+        }
+      ],
+      "failPipeline": false,
+      "name": "TF-Apply-GCP-VM",
+      "overrides": {
+        "environment_name": "${parameters.workspace}-$parameters.environment_name}"
+      },
+      "profile": "",
+      "refId": "3",
+      "requisiteStageRefIds": [
+        "2"
+      ],
+      "targets": [],
+      "terraformVersion": "0.12.20",
+      "type": "terraform",
+      "workspace": "${parameters.workspace}"
+    },
+    {
+      "failPipeline": true,
+      "instructions": "Click done when your testing is complete",
+      "judgmentInputs": [
+        {
+          "value": "Done"
+        }
+      ],
+      "name": "Hold for Testing",
+      "notifications": [
+        {
+          "address": "",
+          "level": "stage",
+          "message": {
+            "": {
+              "text": ""
+            }
+          },
+          "type": "slack",
+          "when": [
+            ""
+          ]
+        }
+      ],
+      "refId": "4",
+      "requisiteStageRefIds": [
+        "3"
+      ],
+      "sendNotifications": false,
+      "type": "manualJudgment"
+    },
+    {
+      "account": "gke-aaront-1",
+      "app": "acmeair",
+      "cloudProvider": "kubernetes",
+      "failOnFailedExpressions": true,
+      "location": "default",
+      "manifestName": "namespace acme-air-${trigger['tag']}",
+      "mode": "static",
+      "name": "DeleteFullAcmeAir1",
+      "options": {
+        "cascading": true
+      },
+      "refId": "5",
+      "requisiteStageRefIds": [
+        "4"
+      ],
+      "stageEnabled": {
+        "expression": "${ #judgment(\"Hold for Testing\").equals(\"Done\")}",
+        "type": "expression"
+      },
+      "type": "deleteManifest"
+    },
+    {
+      "action": "destroy",
+      "artifacts": [
+        {
+          "account": "garreeoke",
+          "artifact": {
+            "artifactAccount": "garreeoke",
+            "name": "main.tf",
+            "reference": "https://api.github.com/repos/garreeoke/armory-terraform/contents/main.tf",
+            "type": "github/file",
+            "version": "master"
+          }
+        }
+      ],
+      "completeOtherBranchesThenFail": false,
+      "continuePipeline": true,
+      "expectedArtifacts": [
+        {
+          "defaultArtifact": {
+            "customKind": true
+          },
+          "displayName": "",
+          "id": "",
+          "matchArtifact": {
+            "artifactAccount": "",
+            "name": "",
+            "type": ""
+          },
+          "useDefaultArtifact": false,
+          "usePriorArtifact": false
+        }
+      ],
+      "failPipeline": false,
+      "name": "TF1-Destroy-GCP-VM",
+      "overrides": {
+        "environment_name": "${parameters.workspace}-$parameters.environment_name}"
+      },
+      "profile": "",
+      "refId": "6",
+      "requisiteStageRefIds": [
+        "4"
+      ],
+      "targets": [],
+      "terraformVersion": "0.12.20",
+      "type": "terraform",
+      "workspace": "${parameters.workspace}"
+    }
+  ],
+  "triggers": [
+    {
+      "account": "garreeoke-armory-docker",
+      "enabled": true,
+      "expectedArtifactIds": [],
+      "organization": "garreeoke",
+      "registry": "index.docker.io",
+      "repository": "garreeoke/acmenode",
+      "tag": "pr.*",
+      "type": "docker"
+    }
+  ],
+  "updateTs": "1598047660609"
+}

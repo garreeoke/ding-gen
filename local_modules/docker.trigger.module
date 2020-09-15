@@ -1,0 +1,1 @@
+{"account":"{{ var "dockerAccount" }}","enabled":"{{ var "triggerEnabled" }}","organization":"{{ var "dockerOrg" }}","registry":"{{ var "dockerRegistry" }}","repository":"{{ var "dockerRepo" }}","tag":"{{ var "dockerTag" }}","type":"docker"}
