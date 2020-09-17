@@ -13,6 +13,7 @@ var appName = flag.String("appName", "new application", "Application Name")
 var pipelineName = flag.String("pipelineName", "new pipeline", "Pipeline Name")
 var inputFile = flag.String("inputFile", "pipeline.json", "File to read in")
 var pipelineFileName = flag.String("pipelineFileName", "dinghyFile", "Pipeline file to create")
+var moduleType = flag.String("moduleType", "local_module", "local_module or module")
 var moduleFolder = flag.String("moduleFolder", "local_modules", "Folder to place modules in")
 
 func main() {
@@ -23,7 +24,7 @@ func main() {
 	log.Println("Building dinghyfile for appName: ", appName)
 	app := Application{
 		AppName: appName,
-		Globals: map[string]string{},
+		//Globals: map[string]string{},
 	}
 	// Read the inputFile ... future will pull directly from spin
 	err := app.Process(appFile)
@@ -110,6 +111,7 @@ func (p *Pipeline) TriggerCfg() error {
 // Build ... docker trigger builder
 func (td *TriggerDocker) Build() (string,error) {
 	flag.Parse()
+	name := "docker.trigger.module"
 	log.Println("Building docker trigger")
 	modTd := *td
 	modTd.Account = "{{ var \"dockerAccount\" }}"
@@ -119,20 +121,23 @@ func (td *TriggerDocker) Build() (string,error) {
 	modTd.Registry = "{{ var \"dockerRegistry\" }}"
 	modTd.Repository = "{{ var \"dockerRepo\" }}"
 	modTd.Tag = "{{ var \"dockerTag\" }}"
-	fileName := *moduleFolder + "/docker.trigger.module"
+	fileName := *moduleFolder + "/" + name
 	err := WriteFile(fileName,"module",modTd)
 	if err != nil {
 		log.Println("error writing docker module file", err)
 		return "",err
 	}
 
-	pmls := []string{"{{ module \"" + fileName + "\"" }
+	if *moduleType == "local_module" {
+		fileName = "/" + fileName
+	}
+	pmls := []string{"{{ " + *moduleType + " \"" + fileName + "\"" }
 	pmls = append(pmls, "\"dockerAccount\" " + "\"" +  td.Account + "\"")
 	pmls = append(pmls, "\"enabled\" " + strconv.FormatBool(td.Enabled.(bool)))
-	pmls = append(pmls, "\"dockerOrg\"" + "\"" + td.Organization + "\"")
-	pmls = append(pmls, "\"dockerRegistry\"" + "\"" + td.Registry + "\"")
-	pmls = append(pmls, "\"dockerRepo\"" + "\"" + td.Repository + "\"")
-	pmls = append(pmls, "\"dockerTag\"" + "\"" + td.Tag + "\"")
+	pmls = append(pmls, "\"dockerOrg\" " + "\"" + td.Organization + "\"")
+	pmls = append(pmls, "\"dockerRegistry\" " + "\"" + td.Registry + "\"")
+	pmls = append(pmls, "\"dockerRepo\" " + "\"" + td.Repository + "\"")
+	pmls = append(pmls, "\"dockerTag\" " + "\"" + td.Tag + "\"")
 	pmls = append(pmls, "}}")
 	pml := strings.Join(pmls, " ")
 	return pml,nil
@@ -141,6 +146,7 @@ func (td *TriggerDocker) Build() (string,error) {
 // ParameterCfg
 func (p *Pipeline) ParameterCfg() error {
 	flag.Parse()
+	name := "param_config.module"
 	log.Println("Building ParameterCFG")
 	// Create module inputFile first
 	module := ParameterConfig{}
@@ -152,10 +158,14 @@ func (p *Pipeline) ParameterCfg() error {
 	module.Options = []string{}
 	module.Pinned = "{{ var \"paramPinned\" }}"
 	module.Required = "{{ var \"Required\" }}"
-	err := WriteFile(*moduleFolder + "/param_config.module","module", module)
+	fileName := *moduleFolder + "/" + name
+	err := WriteFile(fileName,"module", module)
 	if err != nil {
 		log.Println(err)
 		return err
+	}
+	if *moduleType == "local_module" {
+		fileName = "/" + fileName
 	}
 	for i,e := range p.ParameterConfigs {
 		m, err := json.Marshal(e)
@@ -169,7 +179,7 @@ func (p *Pipeline) ParameterCfg() error {
 			log.Println("Error unmarshalling parameter config: ", err)
 			return err
 		}
-		pmls := []string{"{{ module \"local_modules/param_config.module\""}
+		pmls := []string{"{{ " + *moduleType + " \"" + fileName + "\""}
 		pmls = append(pmls, "\"paramName\" " + "\"" + x.Name + "\"")
 		pmls = append(pmls, "\"paramDefaultValue\" " + "\"" + x.Default + "\"")
 		pmls = append(pmls, "\"paramDescription\" " + "\"" + x.Description + "\"")
@@ -204,12 +214,14 @@ func FormatPipeline(object interface{}) []byte {
 	if err != nil {
 		log.Println(err)
 	}
-
+	// Parsing here ... prob need something less hacky :-)
 	b := string(a)
 	c := strings.Replace(b, "\"{{", "{{", -1)
 	d := strings.Replace(c, "}}\"", "}}", -1)
-	e := []byte(strings.Replace(d, `\`,"",-1))
-	return e
+	e := strings.Replace(d, `\"`,`"`,-1)
+	f := strings.Replace(e, `("`, `(\"`, -1)
+	g := []byte(strings.Replace(f, `")`, `\")`, -1))
+	return g
 }
 
 func WriteFile(filename,filetype string, i interface{}) error {
